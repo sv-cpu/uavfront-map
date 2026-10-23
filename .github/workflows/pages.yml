@@ -26,8 +26,12 @@ jobs:
         run: |
           set -e
           rm -rf _site
-          if [ -d dist ]; then cp -a dist _site; else mkdir -p _site && cp -a . _site/; fi
-          rm -rf _site/.git _site/.github
+          if [ -d dist ]; then
+            cp -a dist _site
+          else
+            mkdir -p _site
+            tar --exclude=./.git --exclude=./.github --exclude=./_site -cf - . | tar -xf - -C _site
+          fi
           # SPA-фолбэк: если нет 404.html, отдаём index.html
           if [ ! -f _site/404.html ] && [ -f _site/index.html ]; then cp _site/index.html _site/404.html; fi
           ls -la _site | head -20
