@@ -42,6 +42,13 @@ main{position:fixed;top:46px;left:0;right:0;bottom:0}
 .mk{background:none;border:0}
 .mk svg{display:block;overflow:visible}
 .drone svg{filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))}
+/* region name labels: muted, small, dark halo; never intercept taps */
+.rlab{background:none;border:0;pointer-events:none!important}
+.rlab span{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none;
+  font-weight:500;text-transform:uppercase;letter-spacing:.08em;line-height:1;color:rgba(170,184,198,.62);
+  text-shadow:0 0 2px #08111d,0 0 3px #08111d,0 0 5px rgba(8,17,29,.9)}
+.rlab.act span{color:rgba(214,222,230,.86)}
+.leaflet-labels-pane,.leaflet-labels-pane *{pointer-events:none!important}
 .sea{font:10px var(--mono);color:var(--mut);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
 #timebar{left:10px;right:10px;bottom:10px;display:flex;align-items:center;gap:12px;padding:6px 12px}
 #play{background:none;border:1px solid var(--line2);border-radius:3px;width:28px;height:28px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;padding:0}

@@ -47,6 +47,7 @@
   function short(r) { return ({ "Москва и Московская обл.": "Москва и МО", "Ленинградская обл. и СПб": "СПб и Ленобласть", "Республика Крым": "Крым" })[r] || r; }
 
   var map = L.map("map", { zoomControl: true, attributionControl: true, minZoom: 3, maxZoom: 10, worldCopyJump: false });
+  document.getElementById("map")._lm = map;   // handle for headless screenshot tests
   map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
   map.attributionControl.addAttribution('Границы: geoBoundaries / © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL) · Natural Earth');
   function addBasemap(bm) {   // optional third-party tiles (WEBMAP_BASEMAP=carto|esri); default: none
@@ -54,6 +55,8 @@
     L.tileLayer(bm.url, { subdomains: bm.subdomains || "abc", maxZoom: bm.maxZoom || 16, attribution: bm.attribution }).addTo(map);
   }
   map.setView([53, 40], 5);
+  map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
+  var lbLayer = L.layerGroup().addTo(map);
   var gLayer = null, incLayer = L.layerGroup().addTo(map), apLayer = L.layerGroup().addTo(map), drLayer = L.layerGroup().addTo(map), seaLayer = L.layerGroup().addTo(map);
 
   // ---------------------------------------------------------------- per-region stats for current view
@@ -90,6 +93,90 @@
       fillColor: c || "#0e1a29", fillOpacity: c ? 0.92 : 1, opacity: red ? 0.95 : 1
     };
   }
+  // ---------------------------------------------------------------- region name labels
+  // Pole-of-inaccessibility points (prep_labels.py). Priority: active regions first, then by area; greedy collision culling
+  // in screen space against already placed labels and drone glyphs. Low zoom: active or large regions only.
+  var measureCtx = document.createElement("canvas").getContext("2d");
+  function textW(t, px) { measureCtx.font = "500 " + px + "px Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif"; return measureCtx.measureText(t.toUpperCase()).width + t.length * px * 0.08; }
+  function inRing(r, x, y) {
+    var c = false;
+    for (var i = 0, j = r.length - 1; i < r.length; j = i++)
+      if ((r[i][1] > y) !== (r[j][1] > y) && x < (r[j][0] - r[i][0]) * (y - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+    return c;
+  }
+  function inside(g, ll) {
+    var polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+    return polys.some(function (P) { return inRing(P[0], ll.lng, ll.lat) && !P.slice(1).some(function (h) { return inRing(h, ll.lng, ll.lat); }); });
+  }
+  function hit(a, b) { return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]; }
+  function renderLabels() {
+    lbLayer.clearLayers();
+    if (!S.geo || !S.data) return;
+    var z = map.getZoom(), small = window.innerWidth < 700;
+    var px = z >= 7 ? 11.5 : z >= 6 ? 10.5 : z >= 5 ? 9.5 : 8.5;
+    var minAr = z >= 6 ? 0 : z >= 5 ? 60 : 1e9;          // area (thousand km²) for quiet regions to get a label
+    var boxes = [], cands = [];
+    var soft = [];                                          // glyphs are obstacles: drones hard, hits/airports soft
+    function obst(layer, h, arr) {
+      layer.eachLayer(function (m) { var p = map.latLngToContainerPoint(m.getLatLng()); arr.push([p.x - h, p.y - h, p.x + h, p.y + h]); });
+    }
+    obst(drLayer, (small ? 24 : 30) / 2 - 3, boxes); obst(incLayer, 5, soft); obst(apLayer, 6, soft);
+    var mr = map.getContainer().getBoundingClientRect();     // floating UI (window switch, legend, time bar, zoom) = hard
+    Array.prototype.forEach.call(document.querySelectorAll("#winbar, #legend, #timebar, .leaflet-control-zoom, .leaflet-control-attribution"), function (el) {
+      var r = el.getBoundingClientRect(); if (r.width) boxes.push([r.left - mr.left - 3, r.top - mr.top - 3, r.right - mr.left + 3, r.bottom - mr.top + 3]);
+    });
+    function nsoft(b) { var n = 0; for (var i = 0; i < soft.length; i++) if (hit(b, soft[i])) n++; return n; }
+    function free(b, arr) { for (var i = 0; i < arr.length; i++) if (hit(b, arr[i])) return false; return true; }
+    S.geo.features.forEach(function (f) {
+      var pr = f.properties; if (!pr.lp || !pr.lb) return;
+      var st = stats(pr.key), act = st.score > 0, R = S.data.regions[pr.key];
+      if (!act && pr.ar < minAr) return;
+      if (z <= 4 && !act) return;
+      var p = map.latLngToContainerPoint(pr.lp), dp = null;
+      // keep clear of this region's own drone marker: drop the label just below it
+      if (st.m && R && R.ll) {
+        var d = map.latLngToContainerPoint(R.ll); dp = d;
+        if (Math.abs(d.x - p.x) < 60 && Math.abs(d.y - p.y) < 24) p = L.point(d.x, d.y + (small ? 12 : 15) + px * 0.7);
+      }
+      var txt = z <= 4 ? (pr.ls || pr.lb) : pr.lb;
+      cands.push({ pr: pr, t: txt, p: p, g: f.geometry, w: textW(txt, px), h: px * 1.25,
+                   dp: dp, pri: (st.st === 2 || st.ms ? 3e6 : 0) + (act ? 1e6 + st.score * 100 : 0) + pr.ar, act: act });
+    });
+    cands.sort(function (a, b) { return b.pri - a.pri; });
+    var sz = map.getSize(), dy = px * 1.3;
+    cands.forEach(function (c) {
+      // try the anchor point, then nudged below / above / sideways (still inside the region's neighbourhood)
+      var offs = [[0, 0], [0, dy], [0, -dy], [c.w * 0.3, 0], [-c.w * 0.3, 0], [0, 1.8 * dy], [0, -1.8 * dy]], box = null;
+      // first free spot that avoids every glyph; active regions may fall back to the spot touching the fewest hit/airport marks
+      // (never a label, drone or UI control)
+      var best = null, bestN = 1e9, bestP = null, pts = offs.map(function (o) { return [c.p.x + o[0], c.p.y + o[1], 1]; });
+      pts[0][2] = 0;
+      if (c.dp) {   // tight spots: hug the region's own drone marker (below / above / right / left of it)
+        var ih = (small ? 12 : 15) + 1;
+        pts.push([c.dp.x, c.dp.y + ih + c.h / 2, 0], [c.dp.x, c.dp.y - ih - c.h / 2, 0],
+                 [c.dp.x + ih + c.w / 2 + 2, c.dp.y, 0], [c.dp.x - ih - c.w / 2 - 2, c.dp.y, 0]);
+      }
+      for (var k = 0; k < pts.length && !box; k++) {
+        var x = pts[k][0], y = pts[k][1];
+        var b = [x - c.w / 2 - 2, y - c.h / 2, x + c.w / 2 + 2, y + c.h / 2];
+        if (b[0] < 4 || b[1] < 4 || b[2] > sz.x - 4 || b[3] > sz.y - 4) continue;   // never cut at the viewport edge
+        if (pts[k][2] && !inside(c.g, map.containerPointToLatLng([x, y]))) continue;           // nudged label must stay in its region
+        if (!free(b, boxes)) continue;
+        var n = nsoft(b);
+        if (!n) { box = b; c.p = L.point(x, y); }
+        else if (c.act && n < bestN) { best = b; bestN = n; bestP = L.point(x, y); }
+      }
+      if (!box && best) { box = best; c.p = bestP; }
+      if (!box) return;
+      boxes.push(box);
+      L.marker(map.containerPointToLatLng(c.p), {
+        pane: "labels", interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "rlab" + (c.act ? " act" : ""), html: '<span style="font-size:' + px + 'px">' + esc(c.t) + "</span>", iconSize: [0, 0] })
+      }).addTo(lbLayer);
+    });
+  }
+  map.on("zoomend moveend resize", function () { if (S.data) renderLabels(); });
+
   function render() {
     if (!gLayer) return;
     gLayer.setStyle(style);
@@ -123,6 +210,7 @@
       L.marker(a.ll, { icon: L.divIcon({ className: "mk", html: airportSvg(closed ? RED : AP_GREY), iconSize: [16, 16], iconAnchor: [8, 8] }), zIndexOffset: 300 })
         .bindPopup(apPopup(a), { maxWidth: 260 }).addTo(apLayer);
     });
+    renderLabels();
     if (S.sel) openPanel(S.sel, true);
     legendScale();
   }
