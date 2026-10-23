@@ -69,8 +69,6 @@
   map.setView([53, 40], 5);
   map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
   var lbLayer = L.layerGroup().addTo(map);
-  map.createPane("dirs"); map.getPane("dirs").style.zIndex = 420;
-  var dirLayer = L.layerGroup().addTo(map), dirOn = true;
   var gLayer = null, incLayer = L.layerGroup().addTo(map), apLayer = L.layerGroup().addTo(map), drLayer = L.layerGroup().addTo(map), msLayer = L.layerGroup().addTo(map), seaLayer = L.layerGroup().addTo(map);
 
   // ---------------------------------------------------------------- per-region stats for current view
@@ -219,18 +217,6 @@
         .on("click", function () { openPanel(r); }).addTo(seaLayer);
     });
     var rg = viewRange();
-    dirLayer.clearLayers();
-    if (dirOn) (S.data.dirs || []).forEach(function (d) {   // reported directions: faint arrow X -> toward Y, fades with age
-      var t = tparse(d.t); if (t < rg[0] || t >= rg[1]) return;
-      var f = 1 - (rg[1] - t) / Math.max(rg[1] - rg[0], 1), op = 0.25 + 0.55 * f;
-      var tip = "направление по сообщению · " + fmtHm(t) + " · " + esc(d.x) + " → " + (d.y ? esc(d.y) : "?") + " · " + esc((d.ch || []).join(", "));
-      var ln = L.polyline([d.a, d.b], { pane: "dirs", color: "#d9d6cc", weight: small ? 1.2 : 1.4, opacity: op, interactive: true })
-        .bindTooltip(tip, { className: "rt", sticky: true }).addTo(dirLayer);
-      if (d.u) ln.on("click", function () { window.open(d.u, "_blank", "noopener"); });
-      var dy = d.b[0] - d.a[0], dx = (d.b[1] - d.a[1]) * Math.cos(d.a[0] * Math.PI / 180), ang = Math.atan2(dx, dy) * 180 / Math.PI;
-      L.marker(d.b, { pane: "dirs", interactive: false, icon: L.divIcon({ className: "mk dirh", iconSize: [10, 10], iconAnchor: [5, 5],
-        html: '<svg width="10" height="10" viewBox="0 0 10 10" style="transform:rotate(' + ang.toFixed(0) + 'deg);opacity:' + op.toFixed(2) + '"><path d="M5 0.5 L9 9 L5 6.8 L1 9 Z" fill="#d9d6cc"/></svg>' }) }).addTo(dirLayer);
-    });
     S.data.incidents.forEach(function (e) {
       var t = tparse(e.t); if (t < rg[0] || t >= rg[1] || !e.ll) return;
       L.marker(e.ll, { icon: L.divIcon({ className: "mk", html: incSvg(e.c), iconSize: [12, 12], iconAnchor: [6, 6] }), zIndexOffset: e.c !== "u" ? 600 : 500 })
@@ -340,8 +326,6 @@
   document.getElementById("lgDrone").innerHTML = droneSvg(18, 0);
   document.getElementById("lgMs").innerHTML = missileSvg(16, true);
   document.getElementById("lgInc").innerHTML = incSvg("o");
-  document.getElementById("lgDir").innerHTML = '<svg width="22" height="10" viewBox="0 0 22 10"><path d="M1 5 H17" stroke="#d9d6cc" stroke-width="1.4" opacity=".75"/><path d="M21 5 L13 1.5 L15 5 L13 8.5 Z" fill="#d9d6cc" opacity=".75"/></svg>';
-  document.getElementById("dirTg").onchange = function (ev) { dirOn = ev.target.checked; render(); };
   document.getElementById("lgAp").innerHTML = airportSvg(AP_GREY);
   document.getElementById("lgToggle").onclick = function () { document.getElementById("legend").classList.toggle("min"); };
   if (window.innerWidth < 700) document.getElementById("legend").classList.add("min");
