@@ -3,11 +3,15 @@
 (function () {
   "use strict";
   var S = { w: "24h", h: 167, live: true, data: null, geo: null, sel: null, timer: null };
+  // headless snapshot mode (cards.py): ?snap=1[&sw=<hours>&to=<YYYY-MM-DDTHH:MM, MSK, exclusive end>][&bb=s,w,n,e]
+  var Q = new URLSearchParams(location.search), SNAP = Q.get("snap");
+  if (SNAP) document.documentElement.classList.add("snap");
   var BREAKS = { "3h": [1, 2, 4, 7, 12], "24h": [1, 4, 10, 20, 35], "7d": [1, 10, 30, 60, 120] };
   var FILL = ["#16293f", "#1b3a50", "#224c5f", "#2b5f6d", "#3a7680"];   // single-hue sequential: slate -> muted teal
   var RED = "#d9343f", STEEL = "#c9d3dc", AP_GREY = "#8a9aab";
   var WH = { "3h": 3, "24h": 24, "7d": 168 };
   var WRU = { "3h": "3 ч", "24h": "24 ч", "7d": "7 дн." };
+  if (SNAP && Q.get("sw")) { WH.c = +Q.get("sw"); WRU.c = WH.c + " ч"; BREAKS.c = WH.c <= 6 ? BREAKS["3h"] : WH.c <= 24 ? [1, 3, 7, 14, 25] : BREAKS["7d"]; }
   var KIND = { alert: "тревога", movement: "пролёт", incident: "попадание", interception: "сбито", airport_closed: "аэропорт", airport_open: "аэропорт" };
   var CONF = { o: "офиц.", q: "СМИ", u: "не подтв." };
   var CONF_T = { o: "официальный источник", q: "СМИ со ссылкой на официальный источник", u: "не подтверждено официально" };
@@ -82,7 +86,7 @@
     var h1 = S.h, h0 = S.h - WH[S.w];
     var a2 = seriesSum(r, "a", h0, h1), m2 = seriesSum(r, "m", h0, h1), i2 = seriesSum(r, "i", h0, h1), ms = seriesSum(r, "ms", h0, h1);
     var act = seriesSum(r, "a", h1 - 1, h1) + seriesSum(r, "m", h1 - 1, h1);
-    return { a: a2, m: m2, i: i2, ms: ms, msa: seriesSum(r, "ms", h1 - 2, h1) > 0, st: act ? 2 : (a2 + m2 ? 1 : 0), score: a2 + m2 + 2 * i2, dir: null };
+    return { a: a2, m: m2, i: i2, ms: ms, msa: seriesSum(r, "ms", h1 - 2, h1) > 0, st: act && !SNAP ? 2 : (a2 + m2 ? 1 : 0), score: a2 + m2 + 2 * i2, dir: null };
   }
   function viewRange() {
     var start = tparse(S.data.series_start);
@@ -240,7 +244,7 @@
       (e.ex ? "" : '<div class="pp-f">Точка условная — центр региона.</div>');
   }
   function apPopup(a) {
-    var w = a.w[S.w];
+    var w = (a.w[S.w] || { n: 0 });
     return '<div class="pp-h">Аэропорт</div><div class="pp-t">' + esc(a.name) + "</div>" + esc(short(a.r)) +
       (a.closed ? '<div class="pp-f"><span class="tag alert">ограничения</span>с ' + esc(fmt(a.lt)) + "</div>" : "") +
       '<div class="pp-f">Эпизодов ограничений за ' + WRU[S.w] + ': <b class="num">' + (w.n || 0) + "</b>" + (w.lc ? " · последнее " + esc(fmt(w.lc)) : "") + "</div>" +
@@ -275,12 +279,12 @@
       h += "<h3>Сводки региона</h3>";
       R.rs.forEach(function (x) { h += '<div class="row"><span>' + ctag(x.c) + '<span class="num">' + esc(x.p) + "</span> · " + links(x.u, "ист.") + "</span><b>" + x.n + "</b></div>"; });
     }
-    var aps = S.data.airports.filter(function (a) { return a.r === r && (a.w[S.w].n || a.closed); });
+    var aps = S.data.airports.filter(function (a) { return a.r === r && ((a.w[S.w] || { n: 0 }).n || a.closed); });
     if (aps.length) {
       h += "<h3>Аэропорты</h3>";
       aps.forEach(function (a) {
         h += '<div class="ev">' + (a.closed ? '<span class="tag alert">ограничения</span>' : '<span class="tag">норм.</span>') + "<b>" + esc(a.name) + "</b> · эпизодов " +
-          '<span class="num">' + (a.w[S.w].n || 0) + "</span>" + (a.w[S.w].lc ? ", посл. " + esc(fmt(a.w[S.w].lc)) : "") + " · " + links(a.u, "ист.") + "</div>";
+          '<span class="num">' + ((a.w[S.w] || { n: 0 }).n || 0) + "</span>" + ((a.w[S.w] || { n: 0 }).lc ? ", посл. " + esc(fmt((a.w[S.w] || { n: 0 }).lc)) : "") + " · " + links(a.u, "ист.") + "</div>";
       });
     }
     var rg = viewRange();
@@ -303,6 +307,8 @@
     }
     if (S.data.mod && S.data.mod.regions.indexOf(r) >= 0) h += '<div class="note">Регион упомянут в последней сводке МО (' + esc(S.data.mod.period) + ").</div>";
     h += '<div class="note">Каждое событие учтено один раз (дедупликация по каналам). Метки: офиц. — официальный источник; СМИ — со ссылкой на офиц.; не подтв. — без официального подтверждения.</div>';
+    h += '<div class="cta">Срочные сообщения, сводки МО за ночь и сутки — в Telegram-канале ' +
+      '<a href="https://t.me/uavfront" target="_blank" rel="noopener">@uavfront</a>. Подпишитесь, чтобы не пропустить.</div>';
     document.getElementById("pbody").innerHTML = h;
     document.getElementById("panel").classList.add("open");
   }
@@ -365,6 +371,18 @@
       var miss = Object.keys(S.data.regions).filter(function (r) { return !keys[r] && !S.data.seas[r]; });
       if (miss.length) console.warn("regions without polygon:", miss);
       fitHeader();
+      if (SNAP) {
+        var bb = (Q.get("bb") || "43,27,61,56").split(",").map(Number);
+        map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: [6, 6] });
+        if (Q.get("sw")) {
+          S.w = "c";
+          var to = Q.get("to") ? tparse(Q.get("to")) : tparse(S.data.now);
+          S.h = Math.max(0, Math.min(167, Math.round((to - tparse(S.data.series_start)) / 3600000) - 1)); S.live = false;
+        }
+        render();
+        setTimeout(function () { window.__snapReady = true; }, 300);
+        return;
+      }
       if (window.innerWidth < 700) map.setView([50.5, 38.5], 4); else map.fitBounds([[43, 27], [61, 56]]);
       render();
     })

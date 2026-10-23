@@ -3,12 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>БПЛА Фронт · карта атак</title>
-<meta name="description" content="Карта атак БПЛА по регионам России: тревоги, пролёты, попадания, аэропорты, сводки МО. Обновляется автоматически.">
+<title>Карта атак БПЛА онлайн — дроны и ракетная опасность по регионам России · БПЛА Фронт</title>
+<meta name="description" content="Карта атак БПЛА онлайн: тревоги, пролёты дронов, попадания, ракетная опасность и ограничения аэропортов по регионам России за 3 ч, 24 ч и 7 дней. Итоги — только по сводкам Минобороны. Обновляется автоматически.">
+<meta name="keywords" content="карта атак БПЛА, карта дронов онлайн, ракетная опасность карта, атаки дронов по регионам, беспилотники карта, сводка МО БПЛА">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://sv-cpu.github.io/uavfront-map/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="БПЛА Фронт">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:url" content="https://sv-cpu.github.io/uavfront-map/">
 <meta property="og:title" content="БПЛА Фронт · карта атак">
-<meta property="og:description" content="Тревоги, пролёты, попадания и ограничения аэропортов по регионам — 3 ч / 24 ч / 7 дней.">
+<meta property="og:description" content="Карта атак дронов по регионам России онлайн: тревоги, пролёты, попадания, ракетная опасность, аэропорты. Итоги — по сводкам МО.">
+<meta property="og:image" content="https://sv-cpu.github.io/uavfront-map/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Карта атак БПЛА по регионам России">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="БПЛА Фронт · карта атак">
+<meta name="twitter:description" content="Карта атак дронов по регионам России онлайн: тревоги, пролёты, попадания, ракетная опасность.">
+<meta name="twitter:image" content="https://sv-cpu.github.io/uavfront-map/og.png">
 <meta name="theme-color" content="#0a1422">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a1422'/%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%237d8ea3' stroke-width='1.5'/%3E%3Cpath d='M16 6v20M7 15h18M12 24h8' stroke='%23c9d3dc' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script type="application/ld+json">[{"@context": "https://schema.org", "@type": "WebSite", "name": "БПЛА Фронт · карта атак", "url": "https://sv-cpu.github.io/uavfront-map/", "inLanguage": "ru", "description": "Карта атак БПЛА по регионам России онлайн: тревоги, пролёты, попадания, ракетная опасность, аэропорты.", "publisher": {"@type": "Organization", "name": "БПЛА Фронт", "url": "https://t.me/uavfront", "sameAs": ["https://t.me/uavfront"]}}, {"@context": "https://schema.org", "@type": "Dataset", "name": "Атаки БПЛА по регионам России (7 дней, почасово)", "description": "Дедуплицированные сообщения о тревогах, пролётах беспилотников, попаданиях, ракетной опасности и ограничениях аэропортов по регионам России за последние 7 дней; общий итог — по сводкам Минобороны РФ.", "url": "https://sv-cpu.github.io/uavfront-map/", "inLanguage": "ru", "isAccessibleForFree": true, "dateModified": "2026-10-24T01:20+03:00", "keywords": ["карта атак БПЛА", "карта дронов онлайн", "ракетная опасность", "атаки дронов по регионам"], "spatialCoverage": {"@type": "Place", "name": "Россия"}, "temporalCoverage": "2026-10-17T01:20+03:00/2026-10-24T01:20+03:00", "creator": {"@type": "Organization", "name": "БПЛА Фронт", "url": "https://t.me/uavfront"}, "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://sv-cpu.github.io/uavfront-map/data.json"}]}]</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="style.css">
@@ -23,7 +42,7 @@
     <span class="kv"><span class="k">Обновлено</span><span id="upd" class="v num">—</span></span>
     <span class="kv" id="modbox" title="Последняя сводка Минобороны — единственный источник общего итога"><span class="k">МО</span><span id="mod" class="v"></span></span>
   </div>
-  <a class="tg" href="https://t.me/uavfront" target="_blank" rel="noopener">t.me/uavfront</a>
+  <a class="tg" href="https://t.me/uavfront" target="_blank" rel="noopener" title="Telegram-канал @uavfront: сводки и срочные сообщения"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 4.2 2.9 11.4c-.9.4-.9 1.4 0 1.7l4.6 1.5 1.8 5.5c.2.6 1 .8 1.4.3l2.6-2.4 4.8 3.5c.6.4 1.4.1 1.6-.6L22.9 5.6c.2-1-.5-1.7-1.4-1.4Zm-3.6 3.6-8.4 7.6-.3 3-1.4-4.3 10.1-6.3Z"/></svg><span class="tg-l">Подписаться в Telegram</span><span class="tg-s">Telegram</span></a>
 </header>
 <main>
   <div id="map" aria-label="Карта"></div>
@@ -51,7 +70,8 @@
     <span id="tlabel" class="num">СЕЙЧАС</span>
   </div>
 </main>
-<noscript>Для карты нужен JavaScript.</noscript>
+<section id="about" aria-label="О карте"><h1>Карта атак БПЛА по регионам России — онлайн</h1><p>Карта дронов онлайн от канала «БПЛА Фронт»: тревоги, пролёты беспилотников, попадания и обломки, ракетная опасность и ограничения аэропортов по регионам России за 3 часа, 24 часа и 7 дней. Общий итог — только по официальным сводкам Минобороны; региональные данные — детализация, не суммируются. Каждое событие учтено один раз.</p><ul><li>Последняя сводка Минобороны (23.10 08:00–23.10 20:00 МСК): 87 БПЛА.</li><li>За операционные сутки 22.10 08:00–23.10 08:00 МСК по сводкам МО: 492 БПЛА.</li><li>За 24 часа: регионов с тревогами или пролётами — 43; сообщений о попаданиях и обломках — 16; регионов с ракетной опасностью — 23; аэропортов с ограничениями — 20.</li></ul><p>Обновлено: 24.10.2026 01:20 МСК. Срочные сообщения и сводки — в Telegram: <a href="https://t.me/uavfront">@uavfront</a>.</p></section>
+<noscript><style>#about{position:static!important;width:auto!important;height:auto!important;clip:auto!important;margin:0!important;padding:60px 16px 16px!important}</style>Для интерактивной карты нужен JavaScript.</noscript>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="app.js"></script>

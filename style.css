@@ -15,8 +15,20 @@ header{position:fixed;top:0;left:0;right:0;height:46px;z-index:1000;display:flex
 .kv{display:flex;align-items:baseline;gap:7px;min-width:0}
 .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
 .v{color:var(--tx);overflow:hidden;text-overflow:ellipsis}.v b{color:var(--hi);font-family:var(--mono);font-weight:600}
-.tg{margin-left:auto;white-space:nowrap;color:var(--tx);border:1px solid var(--line2);padding:4px 10px;border-radius:3px;font-size:11px;letter-spacing:.06em}
-.tg:hover{border-color:var(--steel)}
+.tg{margin-left:auto;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:var(--tx);border:1px solid var(--line2);padding:5px 11px;
+  border-radius:3px;font-size:11px;letter-spacing:.06em;background:var(--p2)}
+.tg svg{width:13px;height:13px;fill:var(--steel);flex:none}
+.tg:hover{border-color:var(--steel);color:var(--hi)}.tg:hover svg{fill:var(--hi)}
+.tg-s{display:none}
+/* crawlable summary (visually hidden; shown when JS is off) */
+#about{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);margin:-1px;padding:0;color:var(--tx)}
+#about h1{font-size:18px;color:var(--hi)}#about li{margin:3px 0}
+/* subscribe call-to-action in the region panel */
+.cta{margin:16px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:3px;background:var(--p);font-size:12px;color:var(--mut);line-height:1.5}
+.cta a{color:var(--tx);border-bottom-color:var(--line2)}.cta a:hover{color:var(--hi)}
+/* headless snapshot mode (og.png / night card): map only */
+.snap header,.snap .ctl,.snap #panel,.snap .leaflet-control-container{display:none!important}
+.snap main{top:0!important}
 main{position:fixed;top:46px;left:0;right:0;bottom:0}
 #map{position:absolute;inset:0;background:var(--sea)}
 .leaflet-container{background:var(--sea);font:inherit}
@@ -94,7 +106,8 @@ main{position:fixed;top:46px;left:0;right:0;bottom:0}
 .leaflet-tooltip.rt:before{display:none}
 @media (max-width:700px){
   header{height:auto;min-height:44px;flex-wrap:wrap;gap:4px 12px;padding:7px 10px}
-  .t2,.dayp{display:none}
+  .t2,.dayp,.tg-l{display:none}
+  .tg-s{display:inline}
   .meta{order:3;flex-basis:100%;gap:2px 14px;flex-wrap:wrap;white-space:normal}
   main{top:var(--hh,70px)}
   #legend{bottom:54px;max-width:210px}
