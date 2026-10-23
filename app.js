@@ -14,6 +14,14 @@
 
   // ---------------------------------------------------------------- glyphs (inline SVG, monochrome, no backgrounds)
   // «Лютый»-type silhouette, top view, nose up: slim fuselage, long straight high wing, small tailplane, pusher prop.
+  // missile silhouette (cruise/ballistic generic), drawn nose up-right; muted when the alert was lifted
+  function missileSvg(size, on) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="-16 -16 32 32" style="transform:rotate(45deg)">' +
+      '<g fill="' + RED + '" fill-opacity="' + (on ? 1 : 0.7) + '" stroke="#0a1422" stroke-width="0.7" stroke-linejoin="round">' +
+      '<path d="M-3.2,7 L-7,12.6 L-7,14.6 L-2.4,11.6 Z M3.2,7 L7,12.6 L7,14.6 L2.4,11.6 Z"/>' +                 // tail fins
+      '<path d="M0,-15 C2.7,-12.4 3.2,-9.5 3.2,-6.5 L3.2,11.6 L1.8,13.8 L-1.8,13.8 L-3.2,11.6 L-3.2,-6.5 C-3.2,-9.5 -2.7,-12.4 0,-15 Z"/>' + // body
+      '</g></svg>';
+  }
   function droneSvg(size, deg) {
     return '<svg width="' + size + '" height="' + size + '" viewBox="-32 -32 64 64" style="transform:rotate(' + (deg || 0) + 'deg)">' +
       '<g fill="' + STEEL + '" stroke="#0a1422" stroke-width="0.8" stroke-linejoin="round">' +
@@ -57,7 +65,7 @@
   map.setView([53, 40], 5);
   map.createPane("labels"); map.getPane("labels").style.zIndex = 450; map.getPane("labels").style.pointerEvents = "none";
   var lbLayer = L.layerGroup().addTo(map);
-  var gLayer = null, incLayer = L.layerGroup().addTo(map), apLayer = L.layerGroup().addTo(map), drLayer = L.layerGroup().addTo(map), seaLayer = L.layerGroup().addTo(map);
+  var gLayer = null, incLayer = L.layerGroup().addTo(map), apLayer = L.layerGroup().addTo(map), drLayer = L.layerGroup().addTo(map), msLayer = L.layerGroup().addTo(map), seaLayer = L.layerGroup().addTo(map);
 
   // ---------------------------------------------------------------- per-region stats for current view
   function seriesSum(r, key, h0, h1) {
@@ -85,11 +93,10 @@
   // ---------------------------------------------------------------- render
   function style(f) {
     var st = stats(f.properties.key), c = color(st.score), sel = S.sel === f.properties.key;
-    var red = st.st === 2 || st.ms;
+    var red = st.st === 2;                       // missile danger is a glyph now (missileSvg), not an outline
     return {
       color: red ? RED : sel ? "#8fa3b5" : "#2a3f58",
-      weight: sel ? 1.8 : st.st === 2 ? 1.6 : st.ms ? 1.4 : 0.6,
-      dashArray: st.ms && st.st !== 2 ? "4 3" : null,
+      weight: sel ? 1.8 : red ? 1.6 : 0.6,
       fillColor: c || "#0e1a29", fillOpacity: c ? 0.92 : 1, opacity: red ? 0.95 : 1
     };
   }
@@ -120,7 +127,10 @@
     function obst(layer, h, arr) {
       layer.eachLayer(function (m) { var p = map.latLngToContainerPoint(m.getLatLng()); arr.push([p.x - h, p.y - h, p.x + h, p.y + h]); });
     }
-    obst(drLayer, (small ? 24 : 30) / 2 - 3, boxes); obst(incLayer, 5, soft); obst(apLayer, 6, soft);
+    obst(drLayer, (small ? 24 : 30) / 2 - 3, boxes); msLayer.eachLayer(function (m) {     // missile glyph box from its real offset next to the drone
+      var o = m.options.icon.options, p = map.latLngToContainerPoint(m.getLatLng()), x = p.x - o.iconAnchor[0], y = p.y - o.iconAnchor[1];
+      boxes.push([x + 2, y + 2, x + o.iconSize[0] - 2, y + o.iconSize[1] - 2]);
+    }); obst(incLayer, 5, soft); obst(apLayer, 6, soft);
     var mr = map.getContainer().getBoundingClientRect();     // floating UI (window switch, legend, time bar, zoom) = hard
     Array.prototype.forEach.call(document.querySelectorAll("#winbar, #legend, #timebar, .leaflet-control-zoom, .leaflet-control-attribution"), function (el) {
       var r = el.getBoundingClientRect(); if (r.width) boxes.push([r.left - mr.left - 3, r.top - mr.top - 3, r.right - mr.left + 3, r.bottom - mr.top + 3]);
@@ -180,8 +190,8 @@
   function render() {
     if (!gLayer) return;
     gLayer.setStyle(style);
-    gLayer.eachLayer(function (l) { var s = stats(l.feature.properties.key); if (s.st === 2 || s.ms) l.bringToFront(); });
-    drLayer.clearLayers(); seaLayer.clearLayers(); incLayer.clearLayers(); apLayer.clearLayers();
+    gLayer.eachLayer(function (l) { var s = stats(l.feature.properties.key); if (s.st === 2) l.bringToFront(); });
+    drLayer.clearLayers(); msLayer.clearLayers(); seaLayer.clearLayers(); incLayer.clearLayers(); apLayer.clearLayers();
     var regs = S.data.regions, small = window.innerWidth < 700;
     Object.keys(regs).forEach(function (r) {
       var st = stats(r), ll = regs[r].ll;
@@ -191,6 +201,12 @@
         L.marker(ll, { icon: L.divIcon({ className: "mk drone", html: droneSvg(sz, st.dir == null ? 0 : st.dir), iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2] }), zIndexOffset: 400 })
           .bindTooltip(esc(short(r)) + " — пролётов: " + st.m + (st.dir != null ? " · курс " + st.dir + "°" : ""), { className: "rt", direction: "top" })
           .on("click", function () { openPanel(r); }).addTo(drLayer);
+      }
+      if (st.ms) {   // missile danger: small rocket beside the drone (upper right), or alone at the marker point
+        var ms = small ? 16 : 18, dz = small ? 24 : 30, off = st.m ? [-(dz / 2 + 1), dz / 2 - 2] : [ms / 2, ms / 2];
+        L.marker(ll, { icon: L.divIcon({ className: "mk msl", html: missileSvg(ms, st.msa), iconSize: [ms, ms], iconAnchor: off }), zIndexOffset: 450 })
+          .bindTooltip(esc(short(r)) + " — ракетная опасность" + (st.msa ? " · не снята" : ""), { className: "rt", direction: "top" })
+          .on("click", function () { openPanel(r); }).addTo(msLayer);
       }
       if (S.data.seas[r] && st.score) L.marker(ll, { icon: L.divIcon({ className: "mk", html: '<span class="sea">' + esc(r) + " · " + st.score + "</span>", iconSize: null }) })
         .on("click", function () { openPanel(r); }).addTo(seaLayer);
@@ -301,6 +317,7 @@
     };
   });
   document.getElementById("lgDrone").innerHTML = droneSvg(18, 0);
+  document.getElementById("lgMs").innerHTML = missileSvg(16, true);
   document.getElementById("lgInc").innerHTML = incSvg("o");
   document.getElementById("lgAp").innerHTML = airportSvg(AP_GREY);
   document.getElementById("lgToggle").onclick = function () { document.getElementById("legend").classList.toggle("min"); };
