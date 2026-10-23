@@ -1,27 +1,59 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Карта фронта — UAV</title>
-  <style>
-    :root{color-scheme:dark}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0c1014;color:#d9e6f2;
-         font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-    main{max-width:640px;padding:32px;text-align:center}
-    h1{margin:0 0 8px;font-size:28px;letter-spacing:.02em}
-    p{margin:8px 0;color:#9fb0c2}
-    code{background:#161c22;border:1px solid #26303a;border-radius:6px;padding:2px 6px;color:#cfe3f7}
-    .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#8aa15c;margin-right:8px;
-         box-shadow:0 0 12px #8aa15c99;vertical-align:middle}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>БПЛА Фронт · карта атак</title>
+<meta name="description" content="Карта атак БПЛА по регионам России: тревоги, пролёты, попадания, аэропорты, сводки МО. Обновляется автоматически.">
+<meta property="og:title" content="БПЛА Фронт · карта атак">
+<meta property="og:description" content="Тревоги, пролёты, попадания и ограничения аэропортов по регионам — 3 ч / 24 ч / 7 дней.">
+<meta name="theme-color" content="#0a1422">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a1422'/%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%237d8ea3' stroke-width='1.5'/%3E%3Cpath d='M16 6v20M7 15h18M12 24h8' stroke='%23c9d3dc' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+<header id="hdr">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" /><circle cx="16" cy="16" r="7" /><path d="M16 1v30M1 16h30" /></svg>
+    <span class="t1">БПЛА Фронт</span><span class="t2">карта атак</span>
+  </div>
+  <div class="meta">
+    <span class="kv"><span class="k">Обновлено</span><span id="upd" class="v num">—</span></span>
+    <span class="kv" id="modbox" title="Последняя сводка Минобороны — единственный источник общего итога"><span class="k">МО</span><span id="mod" class="v"></span></span>
+  </div>
+  <a class="tg" href="https://t.me/uavfront" target="_blank" rel="noopener">t.me/uavfront</a>
+</header>
 <main>
-  <h1><span class="dot"></span>Карта фронта — UAV</h1>
-  <p>Репозиторий готов. Сюда бот будет публиковать страницу карты.</p>
-  <p>Публикация: push в <code>main</code> → GitHub Actions → Pages.</p>
-  <p>Если сайт лежит в папке <code>dist/</code>, workflow возьмёт её, иначе — корень репозитория.</p>
+  <div id="map" aria-label="Карта"></div>
+  <div id="winbar" class="ctl seg" role="group" aria-label="Окно">
+    <button data-w="3h">3 ч</button><button data-w="24h" class="on">24 ч</button><button data-w="7d">7 дн</button>
+  </div>
+  <div id="legend" class="ctl">
+    <div class="lg-h" id="lgToggle">Легенда</div>
+    <div class="lg-b">
+      <div id="lgScale"></div>
+      <div class="lg-r"><i class="ln solid"></i>активность ≤ 30 мин</div>
+      <div class="lg-r"><i class="ln dash"></i>ракетная опасность</div>
+      <div class="lg-r"><span class="gl" id="lgDrone"></span>пролёты БПЛА, по курсу</div>
+      <div class="lg-r"><span class="gl" id="lgInc"></span>попадание · контур — не подтв.</div>
+      <div class="lg-r"><span class="gl" id="lgAp"></span>аэропорт · <span class="red">ограничения</span></div>
+    </div>
+  </div>
+  <aside id="panel" aria-live="polite">
+    <button id="pclose" aria-label="Закрыть">×</button>
+    <div id="pbody"></div>
+  </aside>
+  <div id="timebar" class="ctl">
+    <button id="play" aria-label="Воспроизвести"><svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg></button>
+    <input id="slider" type="range" min="0" max="167" value="167" step="1" aria-label="Время">
+    <span id="tlabel" class="num">СЕЙЧАС</span>
+  </div>
 </main>
+<noscript>Для карты нужен JavaScript.</noscript>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="app.js"></script>
 </body>
 </html>
