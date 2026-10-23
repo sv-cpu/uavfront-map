@@ -116,3 +116,7 @@ main{position:fixed;top:46px;left:0;right:0;bottom:0}
   #tlabel{min-width:92px}
   .seg button{padding:8px 12px}
 }
+
+.lg-tg{cursor:pointer}.lg-tg input{margin:0 4px 0 2px;accent-color:#9aa3b5}
+.lg-note{margin-top:4px;font-size:10px;line-height:1.3;color:var(--dim)}
+.mk.dirh{pointer-events:none}
