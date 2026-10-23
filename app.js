@@ -6,12 +6,12 @@
   // headless snapshot mode (cards.py): ?snap=1[&sw=<hours>&to=<YYYY-MM-DDTHH:MM, MSK, exclusive end>][&bb=s,w,n,e]
   var Q = new URLSearchParams(location.search), SNAP = Q.get("snap");
   if (SNAP) document.documentElement.classList.add("snap");
-  var BREAKS = { "3h": [1, 2, 4, 7, 12], "24h": [1, 4, 10, 20, 35], "7d": [1, 10, 30, 60, 120] };
+  var BREAKS = { "1h": [1, 2, 3, 5, 8], "3h": [1, 2, 4, 7, 12], "24h": [1, 4, 10, 20, 35] };
   var FILL = ["#16293f", "#1b3a50", "#224c5f", "#2b5f6d", "#3a7680"];   // single-hue sequential: slate -> muted teal
   var RED = "#d9343f", STEEL = "#c9d3dc", AP_GREY = "#8a9aab";
-  var WH = { "3h": 3, "24h": 24, "7d": 168 };
-  var WRU = { "3h": "3 ч", "24h": "24 ч", "7d": "7 дн." };
-  if (SNAP && Q.get("sw")) { WH.c = +Q.get("sw"); WRU.c = WH.c + " ч"; BREAKS.c = WH.c <= 6 ? BREAKS["3h"] : WH.c <= 24 ? [1, 3, 7, 14, 25] : BREAKS["7d"]; }
+  var WH = { "1h": 1, "3h": 3, "24h": 24 };
+  var WRU = { "1h": "1 ч", "3h": "3 ч", "24h": "24 ч" };
+  if (SNAP && Q.get("sw")) { WH.c = +Q.get("sw"); WRU.c = WH.c + " ч"; BREAKS.c = WH.c <= 6 ? BREAKS["3h"] : WH.c <= 24 ? [1, 3, 7, 14, 25] : [1, 10, 30, 60, 120]; }
   var KIND = { alert: "тревога", movement: "пролёт", incident: "попадание", interception: "сбито", airport_closed: "аэропорт", airport_open: "аэропорт" };
   var CONF = { o: "офиц.", q: "СМИ", u: "не подтв." };
   var CONF_T = { o: "официальный источник", q: "СМИ со ссылкой на официальный источник", u: "не подтверждено официально" };
@@ -239,7 +239,7 @@
     S.data.airports.forEach(function (a) {
       if (!a.ll) return;
       var n = S.live ? a.w[S.w].n : 0;
-      if (!S.live) { if (!(a.w["7d"].lc && tparse(a.w["7d"].lc) >= rg[0] && tparse(a.w["7d"].lc) < rg[1])) return; n = 1; }
+      if (!S.live) { if (!(a.cls || []).some(function (c) { var t = tparse(c); return t >= rg[0] && t < rg[1]; })) return; n = 1; }
       if (!n && !(S.live && a.closed)) return;
       var closed = S.live && a.closed;
       L.marker(a.ll, { icon: L.divIcon({ className: "mk", html: airportSvg(closed ? RED : AP_GREY), iconSize: [16, 16], iconAnchor: [8, 8] }), zIndexOffset: 300 })
