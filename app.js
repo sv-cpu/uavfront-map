@@ -8,7 +8,7 @@
   if (SNAP) document.documentElement.classList.add("snap");
   var BREAKS = { "1h": [1, 2, 3, 5, 8], "3h": [1, 2, 4, 7, 12], "24h": [1, 4, 10, 20, 35] };
   var FILL = ["#16293f", "#1b3a50", "#224c5f", "#2b5f6d", "#3a7680"];   // single-hue sequential: slate -> muted teal
-  var RED = "#d9343f", STEEL = "#c9d3dc", AP_GREY = "#8a9aab";
+  var RED = "#d9343f", STEEL = "#c9d3dc", AP_GREY = "#8a9aab", UABC = "#b8925a";
   var WH = { "1h": 1, "3h": 3, "24h": 24 };
   var WRU = { "1h": "1 ч", "3h": "3 ч", "24h": "24 ч" };
   if (SNAP && Q.get("sw")) { WH.c = +Q.get("sw"); WRU.c = WH.c + " ч"; BREAKS.c = WH.c <= 6 ? BREAKS["3h"] : WH.c <= 24 ? [1, 3, 7, 14, 25] : [1, 10, 30, 60, 120]; }
@@ -24,6 +24,15 @@
       '<g fill="' + RED + '" fill-opacity="' + (on ? 1 : 0.7) + '" stroke="#0a1422" stroke-width="0.7" stroke-linejoin="round">' +
       '<path d="M-3.2,7 L-7,12.6 L-7,14.6 L-2.4,11.6 Z M3.2,7 L7,12.6 L7,14.6 L2.4,11.6 Z"/>' +                 // tail fins
       '<path d="M0,-15 C2.7,-12.4 3.2,-9.5 3.2,-6.5 L3.2,11.6 L1.8,13.8 L-1.8,13.8 L-3.2,11.6 L-3.2,-6.5 C-3.2,-9.5 -2.7,-12.4 0,-15 Z"/>' + // body
+      '</g></svg>';
+  }
+  // aviation bomb (УАБ) with tail fins, nose down-left; muted amber, smaller and quieter than the red missile
+  function bombSvg(size) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="-16 -16 32 32" style="transform:rotate(-135deg)">' +
+      '<g fill="' + UABC + '" stroke="#0a1422" stroke-width="0.7" stroke-linejoin="round">' +
+      '<path d="M-2.6,6 L-6.4,12.8 L-1.6,11.4 Z M2.6,6 L6.4,12.8 L1.6,11.4 Z"/>' +                                   // tail fins
+      '<path d="M0,-13 C3.6,-13 4.6,-8 4.6,-3 C4.6,3 3.4,7 1.6,11.6 L-1.6,11.6 C-3.4,7 -4.6,3 -4.6,-3 C-4.6,-8 -3.6,-13 0,-13 Z"/>' + // body
+      '<path d="M-5.6,12.4 L5.6,12.4" stroke="' + UABC + '" stroke-width="1.4" stroke-linecap="round"/>' +            // fin ring
       '</g></svg>';
   }
   function droneSvg(size, deg) {
@@ -74,19 +83,19 @@
   // ---------------------------------------------------------------- per-region stats for current view
   function seriesSum(r, key, h0, h1) {
     var s = S.data.series[r]; if (!s || !s[key]) return 0;
-    var t = 0; s[key].forEach(function (p) { if (p[0] > h0 && p[0] <= h1) t += (key === "ms" ? 1 : p[1]); }); return t;
+    var t = 0; s[key].forEach(function (p) { if (p[0] > h0 && p[0] <= h1) t += (key === "ms" || key === "ub" ? 1 : p[1]); }); return t;
   }
   function stats(r) {
     var R = S.data.regions[r];
     if (S.live) {
       var w = (R && R.w[S.w]) || { st: 0 };
       var a = w.a || 0, m = w.m || 0, i = (w.i || []).length;
-      return { a: a, m: m, i: i, ms: w.ms || 0, msa: !!w.msa, st: w.st || 0, sd: w.sd, score: a + m + 2 * i, dir: w.dir };
+      return { a: a, m: m, i: i, ms: w.ms || 0, ub: w.ub || 0, msa: !!w.msa, st: w.st || 0, sd: w.sd, score: a + m + 2 * i, dir: w.dir };
     }
     var h1 = S.h, h0 = S.h - WH[S.w];
     var a2 = seriesSum(r, "a", h0, h1), m2 = seriesSum(r, "m", h0, h1), i2 = seriesSum(r, "i", h0, h1), ms = seriesSum(r, "ms", h0, h1);
     var act = seriesSum(r, "a", h1 - 1, h1) + seriesSum(r, "m", h1 - 1, h1);
-    return { a: a2, m: m2, i: i2, ms: ms, msa: seriesSum(r, "ms", h1 - 2, h1) > 0, st: act && !SNAP ? 2 : (a2 + m2 ? 1 : 0), score: a2 + m2 + 2 * i2, dir: null };
+    return { a: a2, m: m2, i: i2, ms: ms, ub: seriesSum(r, "ub", h0, h1), msa: seriesSum(r, "ms", h1 - 2, h1) > 0, st: act && !SNAP ? 2 : (a2 + m2 ? 1 : 0), score: a2 + m2 + 2 * i2, dir: null };
   }
   function fmtHm(t) { var d = new Date(t); return ("0" + d.getUTCHours()).slice(-2) + ":" + ("0" + d.getUTCMinutes()).slice(-2); }
   function viewRange() {
@@ -213,6 +222,12 @@
           .bindTooltip(esc(short(r)) + " — ракетная опасность" + (st.msa ? " · не снята" : ""), { className: "rt", direction: "top" })
           .on("click", function () { openPanel(r); }).addTo(msLayer);
       }
+      if (st.ub) {   // УАБ: small muted bomb beside the drone (upper left), separate from the missile glyph
+        var bs = small ? 14 : 16, dz2 = small ? 24 : 30, boff = st.m ? [dz2 / 2 + bs - 1, dz2 / 2 - 2] : [bs / 2, -2];
+        L.marker(ll, { icon: L.divIcon({ className: "mk uab", html: bombSvg(bs), iconSize: [bs, bs], iconAnchor: boff }), zIndexOffset: 440 })
+          .bindTooltip(esc(short(r)) + " — УАБ", { className: "rt", direction: "top" })
+          .on("click", function () { openPanel(r); }).addTo(msLayer);
+      }
       if (S.data.seas[r] && st.score) L.marker(ll, { icon: L.divIcon({ className: "mk", html: '<span class="sea">' + esc(r) + " · " + st.score + "</span>", iconSize: null }) })
         .on("click", function () { openPanel(r); }).addTo(seaLayer);
     });
@@ -266,6 +281,7 @@
     h += '<div class="cap">' + (S.live ? "последние " + WRU[S.w] : WRU[S.w] + " до " + esc(document.getElementById("tlabel").textContent)) + "</div>";
     if (st.st === 2) h += '<span class="flag">Активность сейчас</span>';
     if (st.ms) h += '<span class="flag">Ракетная опасность' + (st.msa ? " · не снята" : " · " + st.ms) + "</span>";
+    if (st.ub) h += '<span class="flag uab">УАБ · ' + st.ub + "</span>";
     h += '<div class="kpis"><div class="kpi' + (st.a ? " hot" : "") + '"><b>' + st.a + "</b><span>тревоги</span></div>" +
       '<div class="kpi"><b>' + st.m + "</b><span>пролёты</span></div>" +
       '<div class="kpi' + (st.i ? " hot" : "") + '"><b>' + st.i + "</b><span>попадания</span></div></div>";
@@ -302,7 +318,7 @@
       R.ev.forEach(function (e) {
         var cls = e.k === "alert" || e.k === "incident" || e.k === "airport_closed" ? " alert" : "";
         var lab = e.k === "airport_closed" ? "аэроп. огр." : e.k === "airport_open" ? "аэроп. откр." : (KIND[e.k] || e.k);
-        h += '<div class="ev"><time>' + esc(fmt(e.t)) + '</time><span class="tag' + cls + '">' + esc(lab) + "</span>" + (e.ms ? '<span class="tag alert">ракетная</span>' : "") +
+        h += '<div class="ev"><time>' + esc(fmt(e.t)) + '</time><span class="tag' + cls + '">' + esc(lab) + "</span>" + (e.ms ? '<span class="tag alert">ракетная</span>' : "") + (e.ub ? '<span class="tag uab">УАБ</span>' : "") +
           esc(e.tx) + " " + ctag(e.c) + links(e.u, "ист.") + "</div>";
       });
     }
@@ -325,6 +341,7 @@
   });
   document.getElementById("lgDrone").innerHTML = droneSvg(18, 0);
   document.getElementById("lgMs").innerHTML = missileSvg(16, true);
+  document.getElementById("lgUab").innerHTML = bombSvg(15);
   document.getElementById("lgInc").innerHTML = incSvg("o");
   document.getElementById("lgAp").innerHTML = airportSvg(AP_GREY);
   document.getElementById("lgToggle").onclick = function () { document.getElementById("legend").classList.toggle("min"); };
